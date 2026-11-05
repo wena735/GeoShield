@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Disables page-level pinch zooming so zooming only affects the map -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>GeoShield - Universal Device Location Tracker</title>
+
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <style>
+      :root {
+        --bg-color: #0f172a;
+        --card-bg: #1e293b;
+        --accent-blue: #2563eb;
+        --accent-cyan: #06b6d4;
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --text-main: #f8fafc;
+        --text-sub: #94a3b8;
+        --border-color: #334155;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Plus Jakarta Sans", sans-serif;
+        touch-action: manipulation;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Top Bar Header */
+      header {
+        background-color: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.8rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 10;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .brand-icon {
+        background: linear-gradient(
+          135deg,
+          var(--accent-blue),
+          var(--accent-cyan)
+        );
+        color: white;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+      }
+
+      .brand-title h1 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+
+      .brand-title p {
+        font-size: 0.75rem;
+        color: var(--text-sub);
+      }
+
+      .status-badge {
+        background-color: rgba(16, 185, 129, 0.15);
+        color: var(--accent-green);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 0.35rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-pulse {
+        width: 8px;
+        height: 8px;
+        background-color: var(--accent-green);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent-green);
+      }
+
+      /* Layout Grid */
+      .app-container {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        flex: 1;
+        height: calc(100vh - 61px);
+        overflow: hidden;
+      }
+
+      .sidebar {
+        background-color: var(--card-bg);
+        border-right: 1px solid var(--border-color);
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        overflow-y: auto;
+        z-index: 5;
+      }
+
+      .section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-sub);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 0.5rem;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
+        color: white;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      }
+
+      .btn-danger {
+        background-color: var(--accent-red);
+        color: white;
+      }
+
+      .btn-secondary {
+        background-color: #334155;
+        color: var(--text-main);
+      }
+
+      .telemetry-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+      }
+
+      .telemetry-card {
+        background-color: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+      }
+
+      .telemetry-card.full-width {
+        grid-column: span 2;
+      }
+
+      .telemetry-label {
+        font-size: 0.75rem;
+        color: var(--text-sub);
+        margin-bottom: 0.25rem;
+      }
+
+      .telemetry-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-main);
+        word-break: break-all;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .form-group label {
+        font-size: 0.8rem;
+        color: var(--text-sub);
+      }
+
+      .form-control {
+        background-color: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 0.6rem;
+        color: var(--text-main);
+        font-size: 0.85rem;
+        outline: none;
+      }
+
+      .form-control:focus {
+        border-color: var(--accent-blue);
+      }
+
+      /* Map Container */
+      main {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #map {
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        touch-action: auto;
+      }
+
+      @media (max-width: 768px) {
+        .app-container {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr;
+          height: calc(100vh - 61px);
+          overflow-y: auto;
+        }
+        #map {
+          height: 500px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header Navigation -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="brand-title">
+          <h1>GeoShield Tracker</h1>
+          <p>Universal Device Telemetry Platform</p>
+        </div>
+      </div>
+      <div class="status-badge">
+        <div class="status-pulse" id="status-dot"></div>
+        <span id="system-status-text">System Ready</span>
+      </div>
+    </header>
+
+    <!-- Application Body Container -->
+    <div class="app-container">
+      <!-- Sidebar Controls -->
+      <aside class="sidebar" id="sidebar-panel">
+        <div>
+          <div class="section-title">Device Identification</div>
+          <div class="form-group">
+            <label for="device-type"
+              ><i class="fa-solid fa-laptop-mobile"></i> Target Device Name /
+              Model</label
+            >
+            <input
+              type="text"
+              id="device-type"
+              class="form-control"
+              placeholder="e.g., My Smartphone"
+              value="Target Device"
+            />
+          </div>
+          <div class="form-group">
+            <label for="phone-number"
+              ><i class="fa-solid fa-fingerprint"></i> Device ID / SIM
+              Number</label
+            >
+            <input
+              type="text"
+              id="phone-number"
+              class="form-control"
+              placeholder="e.g., +63 912 345 6789"
+              value="Device-01"
+            />
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color)" />
+
+        <div>
+          <div class="section-title">Satellite GPS Controls</div>
+          <button
+            id="start-tracking-btn"
+            class="btn btn-primary"
+            style="margin-bottom: 0.5rem"
+          >
+            <i class="fa-solid fa-satellite-dish"></i> Start Live Satellite
+            Tracking
+          </button>
+          <button
+            id="stop-tracking-btn"
+            class="btn btn-danger"
+            style="display: none"
+          >
+            <i class="fa-solid fa-hand"></i> Stop Live Tracking
+          </button>
+        </div>
+
+        <div class="telemetry-grid">
+          <div class="telemetry-card full-width">
+            <div class="telemetry-label">Active Target Device</div>
+            <div class="telemetry-value" id="val-device">
+              Target Device (Device-01)
+            </div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-label">Latitude</div>
+            <div class="telemetry-value" id="val-lat">10.133100</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-label">Longitude</div>
+            <div class="telemetry-value" id="val-lng">124.850200</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-label">Precision Radius</div>
+            <div class="telemetry-value" id="val-acc">±0 meters</div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-label">Mode / Source</div>
+            <div class="telemetry-value" id="val-source">Standby</div>
+          </div>
+          <div class="telemetry-card full-width">
+            <div class="telemetry-label">Last Position Ping</div>
+            <div class="telemetry-value" id="val-time">Not fetched yet</div>
+          </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color)" />
+
+        <div>
+          <div class="section-title">Manual Coordinate Override</div>
+          <div class="form-group">
+            <label for="sim-lat">Target Latitude</label>
+            <input
+              type="text"
+              id="sim-lat"
+              class="form-control"
+              value="10.133100"
+            />
+          </div>
+          <div class="form-group">
+            <label for="sim-lng">Target Longitude</label>
+            <input
+              type="text"
+              id="sim-lng"
+              class="form-control"
+              value="124.850200"
+            />
+          </div>
+          <button id="sim-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-map-pin"></i> Plot Manual Coordinates
+          </button>
+        </div>
+      </aside>
+
+      <!-- Satellite Map Viewport -->
+      <main>
+        <div id="map"></div>
+      </main>
+    </div>
+
+    <!-- Leaflet JavaScript Library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Application Logic -->
+    <script>
+      // Exact coordinates corresponding to Saint Joseph College Main Campus wing
+      const defaultLat = 10.1331;
+      const defaultLng = 124.8502;
+
+      // Initialize Leaflet Map
+      const map = L.map("map", {
+        maxZoom: 20,
+        tap: true,
+      }).setView([defaultLat, defaultLng], 19);
+
+      // Direct Google Hybrid Satellite Tiles
+      L.tileLayer("https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", {
+        maxZoom: 20,
+        attribution: "Map data © Google",
+      }).addTo(map);
+
+      // High-precision cyan dot marker
+      let activeDotMarker = L.circleMarker([defaultLat, defaultLng], {
+        radius: 8,
+        fillColor: "#06b6d4",
+        color: "#ffffff",
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 1,
+      }).addTo(map);
+
+      activeDotMarker
+        .bindPopup("<b>Main Campus Wing</b><br>Dormitory Node Active")
+        .openPopup();
+
+      let accuracyCircle = null;
+      let pathPolyline = null;
+      let pathCoordinates = [];
+      let watchId = null;
+
+      // Element Selectors
+      const startBtn = document.getElementById("start-tracking-btn");
+      const stopBtn = document.getElementById("stop-tracking-btn");
+      const simBtn = document.getElementById("sim-btn");
+      const deviceInput = document.getElementById("device-type");
+      const phoneInput = document.getElementById("phone-number");
+
+      const valDevice = document.getElementById("val-device");
+      const valLat = document.getElementById("val-lat");
+      const valLng = document.getElementById("val-lng");
+      const valAcc = document.getElementById("val-acc");
+      const valSource = document.getElementById("val-source");
+      const valTime = document.getElementById("val-time");
+      const statusText = document.getElementById("system-status-text");
+      const statusDot = document.getElementById("status-dot");
+
+      // Dashboard Telemetry Updater
+      function updateTelemetry(lat, lng, accuracy, source) {
+        const selectedDevice = deviceInput.value.trim() || "Target Device";
+        const phoneNumber = phoneInput.value.trim() || "Unspecified ID";
+
+        valDevice.textContent = `${selectedDevice} (${phoneNumber})`;
+        valLat.textContent = lat.toFixed(6);
+        valLng.textContent = lng.toFixed(6);
+        valAcc.textContent = accuracy
+          ? `±${Math.round(accuracy)} meters`
+          : "Exact Pin";
+        valSource.textContent = source;
+        valTime.textContent = new Date().toLocaleTimeString();
+
+        document.getElementById("sim-lat").value = lat.toFixed(6);
+        document.getElementById("sim-lng").value = lng.toFixed(6);
+
+        map.setView([lat, lng], 19);
+
+        activeDotMarker
+          .setLatLng([lat, lng])
+          .bindPopup(
+            `
+          <div style="font-family: sans-serif; font-size: 13px;">
+            <b style="color: #2563eb;">📱 ${selectedDevice}</b><br>
+            <b>ID:</b> ${phoneNumber}<br>
+            <b>Mode:</b> ${source}<br>
+            <b>Coords:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}
+          </div>
+        `,
+          )
+          .openPopup();
+
+        if (accuracy) {
+          if (accuracyCircle) map.removeLayer(accuracyCircle);
+          accuracyCircle = L.circle([lat, lng], {
+            radius: accuracy,
+            color: "#06b6d4",
+            fillColor: "#06b6d4",
+            fillOpacity: 0.12,
+            weight: 1,
+          }).addTo(map);
+        }
+
+        if (source === "Live Satellite Tracking") {
+          pathCoordinates.push([lat, lng]);
+          if (pathPolyline) map.removeLayer(pathPolyline);
+          pathPolyline = L.polyline(pathCoordinates, {
+            color: "#38bdf8",
+            weight: 4,
+            opacity: 0.9,
+          }).addTo(map);
+        }
+      }
+
+      // Live Tracking Toggle
+      startBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          alert("Geolocation is not supported by your current browser.");
+          return;
+        }
+
+        startBtn.style.display = "none";
+        stopBtn.style.display = "block";
+        statusText.textContent = "Tracking Live Satellite...";
+        statusDot.style.backgroundColor = "#06b6d4";
+
+        pathCoordinates = [];
+
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+
+            updateTelemetry(lat, lng, accuracy, "Live Satellite Tracking");
+          },
+          (error) => {
+            alert(`Satellite GPS Error: ${error.message}`);
+            stopTracking();
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 20000,
+            maximumAge: 0,
+          },
+        );
+      });
+
+      function stopTracking() {
+        if (watchId !== null) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+        startBtn.style.display = "block";
+        stopBtn.style.display = "none";
+        statusText.textContent = "Tracking Stopped";
+        statusDot.style.backgroundColor = "#ef4444";
+      }
+
+      stopBtn.addEventListener("click", stopTracking);
+
+      // Manual Override
+      simBtn.addEventListener("click", () => {
+        const lat = parseFloat(document.getElementById("sim-lat").value);
+        const lng = parseFloat(document.getElementById("sim-lng").value);
+
+        if (isNaN(lat) || isNaN(lng)) {
+          alert("Please enter valid numerical latitude and longitude values.");
+          return;
+        }
+
+        updateTelemetry(lat, lng, null, "Manual Override");
+        statusText.textContent = "Manual Dot Plotted";
+      });
+    </script>
+  </body>
+</html>
